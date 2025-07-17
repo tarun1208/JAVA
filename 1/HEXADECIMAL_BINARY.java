@@ -4,15 +4,15 @@ public class HexToBinary {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        System.out.print("Enter a hexadecimal number: ");
-        String hex = scanner.nextLine();
+        System.out.print("Enter number: ");
+        String n = scanner.nextLine();
 
         int decimal = 0;
         int power = 0;
 
         // Step 1: Convert Hexadecimal to Decimal
-        for (int i = hex.length() - 1; i >= 0; i--) {
-            char ch = hex.charAt(i);
+        for (int i = n.length() - 1; i >= 0; i--) {
+            char ch = n.charAt(i);
             int digit;
 
             if (ch >= '0' && ch <= '9') {
@@ -37,7 +37,7 @@ public class HexToBinary {
         } else {
             for (; decimal > 0; decimal = decimal / 2) {
                 int rem = decimal % 2;
-                binary = rem + binary;  // prepend to build binary string
+                binary = rem + binary;
             }
         }
 
