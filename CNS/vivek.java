@@ -1,145 +1,91 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Diffie Hellman Key Exchange</title>
-
-<style>
-body{
-    font-family: Arial, sans-serif;
-    background-color:#f2f2f2;
+Algorithm:
+1. Generate a 128-bit Blowfish secret key and store it in a JCEKS keystore file
+(blowfish.jks) using the Java keytool command-line utility
+2. Assign an alias (blowfishkey), a keystore password (store@123), and a key password
+(key@123) during keystore creation
+3. In the Java program, load the JCEKS keystore file using
+KeyStore.getInstance("JCEKS")
+25
+4. Authenticate to the keystore using the store password and retrieve the Blowfish
+SecretKey entry using the alias and key password
+5. Initialize the Cipher object in ENCRYPT_MODE using
+Blowfish/ECB/PKCS5Padding with the retrieved key
+6. Divide the plaintext into 64-bit blocks and encrypt each block through Blowfish's 16-
+round Feistel network using the P-array and four S-Boxes
+7. 8. Encode the resulting ciphertext bytes to Base64 for readable output
+Initialize the Cipher object in DECRYPT_MODE using the same key loaded from the
+keystore
+9. Decode the Base64 ciphertext and apply the Blowfish decryption by reversing the sub-
+key order (P18 to P1) through all 16 rounds
+10. Display the original text, key algorithm, key value, encrypted ciphertext, and decrypted
+plaintext
+Java Program (BlowfishKeyTool.java):
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import java.security.KeyStore;
+import java.io.FileInputStream;
+import java.util.Base64;
+public class BlowfishKeyTool {
+private static final String KEYSTORE_FILE = "blowfish.jks";
+private static final String STORE_PASSWORD = "store@123";
+private static final String KEY_ALIAS = "blowfishkey";
+private static final String KEY_PASSWORD = "key@123";
+// Load the Blowfish key from the JCEKS keystore
+public static SecretKey loadKeyFromKeyStore() throws Exception {
+KeyStore keyStore = KeyStore.getInstance("JCEKS");
+try (FileInputStream fis = new FileInputStream(KEYSTORE_FILE)) {
+keyStore.load(fis, STORE_PASSWORD.toCharArray());
+26
 }
-
-.box{
-    background-color:white;
-    width:420px;
-    margin:40px auto;
-    padding:20px;
-    border-radius:10px;
-    box-shadow:2px 2px 10px gray;
+KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry)
+keyStore.getEntry(
+KEY_ALIAS,
+new KeyStore.PasswordProtection(KEY_PASSWORD.toCharArray())
+);
+return entry.getSecretKey();
 }
-
-h2{
-    text-align:center;
-    color:#2c3e50;
+// Encrypt plaintext using the loaded Blowfish key
+public static String encrypt(String plainText, SecretKey key)
+throws Exception {
+Cipher cipher = Cipher.getInstance("Blowfish/ECB/PKCS5Padding");
+cipher.init(Cipher.ENCRYPT_MODE, key);
+byte[] encryptedBytes = cipher.doFinal(plainText.getBytes("UTF-8"));
+return Base64.getEncoder().encodeToString(encryptedBytes);
 }
-
-.row{
-    margin:10px 0;
+// Decrypt ciphertext using the loaded Blowfish key
+public static String decrypt(String cipherText, SecretKey key)
+throws Exception {
+Cipher cipher = Cipher.getInstance("Blowfish/ECB/PKCS5Padding");
+cipher.init(Cipher.DECRYPT_MODE, key);
+byte[] decryptedBytes =
+cipher.doFinal(Base64.getDecoder().decode(cipherText));
+return new String(decryptedBytes, "UTF-8");
 }
-
-label{
-    display:inline-block;
-    width:170px;
+public static void main(String[] args) {
+27
+try {
+String plainText = "Hello World";
+System.out.println("Original Text : " + plainText);
+// Load key from keystore
+SecretKey secretKey = loadKeyFromKeyStore();
+System.out.println("Key Algorithm : " + secretKey.getAlgorithm());
+System.out.println("Key (Base64) : " +
+Base64.getEncoder().encodeToString(secretKey.getEncoded()));
+// Encrypt
+String encrypted = encrypt(plainText, secretKey);
+System.out.println("Encrypted Text : " + encrypted);
+// Decrypt
+String decrypted = decrypt(encrypted, secretKey);
+System.out.println("Decrypted Text : " + decrypted);
+} catch (Exception e) {
+System.out.println("Error: " + e.getMessage());
+e.printStackTrace();
 }
-
-input{
-    width:180px;
-    padding:5px;
 }
-
-button{
-    margin-top:10px;
-    padding:8px 15px;
-    background-color:blue;
-    color:white;
-    border:none;
-    border-radius:5px;
-    cursor:pointer;
 }
-
-button:hover{
-    background-color:darkblue;
-}
-
-#result{
-    margin-top:15px;
-    font-weight:bold;
-}
-</style>
-
-</head>
-
-<body>
-
-<div class="box">
-
-<h2>Diffie-Hellman Key Exchange</h2>
-
-<div class="row">
-<label>Prime number (p):</label>
-<input type="number" id="p" value="23">
-</div>
-
-<div class="row">
-<label>Generator (g):</label>
-<input type="number" id="g" value="5">
-</div>
-
-<div class="row">
-<label>Alice Private Key (a):</label>
-<input type="number" id="a" value="6">
-</div>
-
-<button onclick="compute()">Compute</button>
-
-<p id="result"></p>
-
-</div>
-
-<script>
-
-function modPow(base, exp, mod)
-{
-    let result = 1;
-    base = base % mod;
-
-    while(exp > 0)
-    {
-        if(exp % 2 === 1)
-        {
-            result = (result * base) % mod;
-        }
-
-        exp = Math.floor(exp / 2);
-        base = (base * base) % mod;
-    }
-
-    return result;
-}
-
-function compute()
-{
-    let p = Number(document.getElementById("p").value);
-    let g = Number(document.getElementById("g").value);
-    let a = Number(document.getElementById("a").value);
-
-    if(!p || !g || !a)
-    {
-        document.getElementById("result").innerHTML = "Please enter valid numbers.";
-        return;
-    }
-
-    let b = Math.floor(Math.random() * (p - 2)) + 1;
-
-    let A = modPow(g, a, p);
-    let B = modPow(g, b, p);
-
-    let Ka = modPow(B, a, p);
-    let Kb = modPow(A, b, p);
-
-    let output = "";
-    output += "Alice private key = " + a + "<br>";
-    output += "Bob private key = " + b + "<br><br>";
-    output += "Alice public key A = " + A + "<br>";
-    output += "Bob public key B = " + B + "<br><br>";
-    output += "Alice secret key = " + Ka + "<br>";
-    output += "Bob secret key = " + Kb + "<br>";
-
-    document.getElementById("result").innerHTML = output;
-}
-
-</script>
-
-</body>
-</html>
+Output:
+Original Text : Hello World
+Key Algorithm : Blowfish
+Key (Base64) mK3pN7qR2sT4uV6w= (stored in blowfish.jks keystore)
+Encrypted Text : Xz8aB1cD3eF5gH7i= (sample - depends on stored key)
+Decrypted Text : Hello World
